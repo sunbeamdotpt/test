@@ -59,7 +59,6 @@ impl OpenBao {
             ])
             .with_env_var("BAO_DEV_ROOT_TOKEN_ID", self.root_token.clone())
             .with_env_var("BAO_DEV_LISTEN_ADDRESS", "0.0.0.0:8200")
-            .with_network("default")
             .with_startup_timeout(Duration::from_secs(120))
             .start()
             .await
