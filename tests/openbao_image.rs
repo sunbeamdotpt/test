@@ -1,17 +1,18 @@
 #[tokio::test]
 async fn openbao_is_healthy() {
-    use sunbeam_test::{container_bridge_ip, OpenBao};
+    use sunbeam_test::OpenBao;
 
     let container = OpenBao::default()
+        .publish_ports()
         .start()
         .await
         .expect("openbao should start");
 
-    let host = container_bridge_ip(container.id())
+    let base_url = OpenBao::url(&container)
         .await
-        .expect("bridge ip should resolve");
+        .expect("openbao url should resolve");
 
-    let url = format!("http://{host}:{}/v1/sys/health", OpenBao::PORT);
+    let url = format!("{base_url}/v1/sys/health");
     let response = reqwest::get(&url)
         .await
         .expect("health request should succeed");

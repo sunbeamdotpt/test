@@ -1,17 +1,19 @@
 #[tokio::test]
 async fn kratos_is_healthy() {
-    use sunbeam_test::{container_bridge_ip, Kratos};
+    use sunbeam_test::Kratos;
 
     let container = Kratos::default()
+        .publish_ports()
         .start()
         .await
         .expect("kratos should start");
 
-    let host = container_bridge_ip(container.id())
-        .await
-        .expect("bridge ip should resolve");
-
-    let url = format!("http://{host}:{}/health/ready", Kratos::PUBLIC_PORT);
+    let url = format!(
+        "{}/health/ready",
+        Kratos::public_url(&container)
+            .await
+            .expect("kratos url should resolve")
+    );
     let response = reqwest::get(&url)
         .await
         .expect("health request should succeed");
@@ -24,15 +26,20 @@ async fn kratos_is_healthy() {
 
 #[tokio::test]
 async fn hydra_is_healthy() {
-    use sunbeam_test::{container_bridge_ip, Hydra};
+    use sunbeam_test::Hydra;
 
-    let container = Hydra::default().start().await.expect("hydra should start");
-
-    let host = container_bridge_ip(container.id())
+    let container = Hydra::default()
+        .publish_ports()
+        .start()
         .await
-        .expect("bridge ip should resolve");
+        .expect("hydra should start");
 
-    let url = format!("http://{host}:{}/health/ready", Hydra::ADMIN_PORT);
+    let url = format!(
+        "{}/health/ready",
+        Hydra::admin_url(&container)
+            .await
+            .expect("hydra url should resolve")
+    );
     let response = reqwest::get(&url)
         .await
         .expect("health request should succeed");
@@ -45,15 +52,20 @@ async fn hydra_is_healthy() {
 
 #[tokio::test]
 async fn keto_is_healthy() {
-    use sunbeam_test::{container_bridge_ip, Keto};
+    use sunbeam_test::Keto;
 
-    let container = Keto::default().start().await.expect("keto should start");
-
-    let host = container_bridge_ip(container.id())
+    let container = Keto::default()
+        .publish_ports()
+        .start()
         .await
-        .expect("bridge ip should resolve");
+        .expect("keto should start");
 
-    let url = format!("http://{host}:{}/health/ready", Keto::READ_PORT);
+    let url = format!(
+        "{}/health/ready",
+        Keto::read_url(&container)
+            .await
+            .expect("keto url should resolve")
+    );
     let response = reqwest::get(&url)
         .await
         .expect("health request should succeed");

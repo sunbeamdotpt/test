@@ -1,17 +1,18 @@
 #[tokio::test]
 async fn searxng_is_healthy() {
-    use sunbeam_test::{container_bridge_ip, SearXng};
+    use sunbeam_test::SearXng;
 
     let container = SearXng::default()
+        .publish_ports()
         .start()
         .await
         .expect("searxng should start");
 
-    let host = container_bridge_ip(container.id())
+    let base_url = SearXng::url(&container)
         .await
-        .expect("bridge ip should resolve");
+        .expect("searxng url should resolve");
 
-    let url = format!("http://{host}:{}/healthz", SearXng::PORT);
+    let url = format!("{base_url}/healthz");
     let response = reqwest::get(&url)
         .await
         .expect("health request should succeed");

@@ -4,6 +4,8 @@ use testcontainers::{
     core::ContainerPort, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt,
 };
 
+use crate::util;
+
 /// Testcontainers builder for Stalwart Mail Server.
 ///
 /// Defaults to the `stalwartlabs/stalwart:v0.15.5` image used by `../sbbb`.
@@ -12,6 +14,7 @@ use testcontainers::{
 #[derive(Debug, Clone)]
 pub struct Stalwart {
     tag: String,
+    published_ports: bool,
 }
 
 impl Stalwart {
@@ -32,17 +35,33 @@ impl Stalwart {
         self
     }
 
+    /// Publish Stalwart's port to a random host port so the container is reachable
+    /// without bridge-network access.
+    pub fn publish_ports(mut self) -> Self {
+        self.published_ports = true;
+        self
+    }
+
+    /// Return the web admin / JMAP URL for a container that was started with published ports.
+    pub async fn url(
+        container: &ContainerAsync<GenericImage>,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        util::container_host_url(container, Self::PORT).await
+    }
+
     /// Start a Stalwart container in bootstrap mode.
     pub async fn start(
         self,
     ) -> Result<ContainerAsync<GenericImage>, testcontainers::TestcontainersError> {
-        GenericImage::new(Self::NAME, &self.tag)
+        let mut image = GenericImage::new(Self::NAME, &self.tag)
             .with_exposed_port(ContainerPort::Tcp(Self::PORT))
-            .with_env_var("STALWART_HOSTNAME", "localhost")
-            .with_network("default")
-            .with_startup_timeout(Duration::from_secs(90))
-            .start()
-            .await
+            .with_startup_timeout(Duration::from_secs(90));
+
+        if self.published_ports {
+            image = image.with_mapped_port(0, ContainerPort::Tcp(Self::PORT));
+        }
+
+        image.start().await
     }
 
     /// Extract the temporary bootstrap admin password from the container logs.
@@ -71,6 +90,7 @@ impl Default for Stalwart {
     fn default() -> Self {
         Self {
             tag: Self::DEFAULT_TAG.to_owned(),
+            published_ports: false,
         }
     }
 }

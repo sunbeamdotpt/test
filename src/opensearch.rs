@@ -4,6 +4,8 @@ use testcontainers::{
     core::ContainerPort, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt,
 };
 
+use crate::util;
+
 /// Testcontainers builder for OpenSearch.
 ///
 /// Defaults to the `opensearchproject/opensearch:3` image used by `../sbbb`.
@@ -13,6 +15,7 @@ use testcontainers::{
 pub struct OpenSearch {
     tag: String,
     admin_password: String,
+    published_ports: bool,
 }
 
 impl OpenSearch {
@@ -41,11 +44,25 @@ impl OpenSearch {
         self
     }
 
+    /// Publish OpenSearch's REST port to a random host port so the container is reachable
+    /// without bridge-network access.
+    pub fn publish_ports(mut self) -> Self {
+        self.published_ports = true;
+        self
+    }
+
+    /// Return the REST API URL for a container that was started with published ports.
+    pub async fn url(
+        container: &ContainerAsync<GenericImage>,
+    ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+        util::container_host_url(container, Self::REST_PORT).await
+    }
+
     /// Start a single-node OpenSearch container with security disabled.
     pub async fn start(
         self,
     ) -> Result<ContainerAsync<GenericImage>, testcontainers::TestcontainersError> {
-        GenericImage::new(Self::NAME, &self.tag)
+        let mut image = GenericImage::new(Self::NAME, &self.tag)
             .with_exposed_port(ContainerPort::Tcp(Self::REST_PORT))
             .with_exposed_port(ContainerPort::Tcp(Self::TRANSPORT_PORT))
             .with_env_var("discovery.type", "single-node")
@@ -56,10 +73,13 @@ impl OpenSearch {
             )
             .with_env_var("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m")
             .with_env_var("bootstrap.memory_lock", "true")
-            .with_network("default")
-            .with_startup_timeout(Duration::from_secs(180))
-            .start()
-            .await
+            .with_startup_timeout(Duration::from_secs(180));
+
+        if self.published_ports {
+            image = image.with_mapped_port(0, ContainerPort::Tcp(Self::REST_PORT));
+        }
+
+        image.start().await
     }
 }
 
@@ -68,6 +88,7 @@ impl Default for OpenSearch {
         Self {
             tag: Self::DEFAULT_TAG.to_owned(),
             admin_password: "MyS+ongPwd123".to_owned(),
+            published_ports: false,
         }
     }
 }

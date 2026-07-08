@@ -2,18 +2,19 @@ use std::time::Duration;
 
 #[tokio::test]
 async fn opensearch_is_healthy() {
-    use sunbeam_test::{container_bridge_ip, OpenSearch};
+    use sunbeam_test::OpenSearch;
 
     let container = OpenSearch::default()
+        .publish_ports()
         .start()
         .await
         .expect("opensearch should start");
 
-    let host = container_bridge_ip(container.id())
+    let base_url = OpenSearch::url(&container)
         .await
-        .expect("bridge ip should resolve");
+        .expect("opensearch url should resolve");
 
-    let url = format!("http://{host}:{}/_cluster/health", OpenSearch::REST_PORT);
+    let url = format!("{base_url}/_cluster/health");
 
     let mut last_status = None;
     for _ in 0..60 {

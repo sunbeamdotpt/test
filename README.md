@@ -15,17 +15,22 @@ Custom [`testcontainers-rs`](https://github.com/testcontainers/testcontainers-rs
 | `SearXNG` | `searxng/searxng` | Binds on `0.0.0.0:8080` so it is reachable from the bridge network |
 | `Headscale` | `headscale/headscale` | Derived image with a baked-in `config.yaml` |
 | `Tuwunel` | `ghcr.io/matrix-construct/tuwunel` | Derived image with a baked-in `tuwunel.toml` |
+| `Postgres` | `postgres` | `ory/ory/ory` credentials; optional published port |
+| `SsoGateway` | `ghcr.io/sunbeamdotpt/sso-gateway` | Full stack (Postgres + Hydra + Kratos + Keto + gateway image) on a private network; exposes a single endpoint |
 
 ## Usage
 
+Call `.publish_ports()` (or `.publish_port()` for `Postgres`) when you need to reach a
+container from the test host. Each builder exposes a URL helper that resolves the
+correct host and dynamic port for the running container:
+
 ```rust
-use sunbeam_test::{container_bridge_ip, OpenBao};
+use sunbeam_test::OpenBao;
 
 #[tokio::test]
 async fn openbao_is_healthy() {
-    let container = OpenBao::new().start().await.unwrap();
-    let host = container_bridge_ip(container.id()).await.unwrap();
-    let url = format!("http://{host}:8200/v1/sys/health");
+    let container = OpenBao::new().publish_ports().start().await.unwrap();
+    let url = format!("{}/v1/sys/health", OpenBao::url(&container).await.unwrap());
 
     let resp = reqwest::get(&url).await.unwrap();
     assert!(resp.status().is_success());
@@ -38,25 +43,44 @@ Most builders expose a fluent API for tags, config overrides, and credentials:
 let container = sunbeam_test::OpenBao::new()
     .with_tag("2.1.0")
     .with_root_token("my-token")
+    .publish_ports()
     .start()
     .await
     .unwrap();
+```
+
+For sso-gateway, use the orchestrator to start the whole stack from a pre-built image:
+
+```rust
+let gateway = sunbeam_test::SsoGateway::new()
+    .with_image("ghcr.io/sunbeamdotpt/sso-gateway", "latest")
+    .start()
+    .await
+    .unwrap();
+
+let endpoint = gateway.endpoint(); // http://127.0.0.1:<random-port>
 ```
 
 ## Running the tests
 
 The tests work with any Docker-compatible runtime.
 
-- **macOS**: this project is developed and tested with [**socktainer**](https://github.com/sunbeam-pt/socktainer), which exposes a Docker socket at `~/.socktainer/container.sock`.
+- **macOS with Docker Desktop**: leave `DOCKER_HOST` unset or set it to the Docker socket.
 
-  ```bash
-  # with socktainer running in the background
-  DOCKER_HOST=unix://$HOME/.socktainer/container.sock cargo test
-  ```
+- **macOS with lima-docker**: point `DOCKER_HOST` at the lima VM socket, for example
+  `unix:///Users/sienna/.lima/docker/sock/docker.sock`. Container bridge IPs are not
+  reachable from the macOS host in this setup, so the tests rely on published ports.
 
-- **Linux / Windows / everyone else**: use Docker, Podman, Rancher Desktop, or any other runtime that exposes a Docker-compatible socket. Point `DOCKER_HOST` at it, or leave it unset if the default socket location works.
+- **Linux / Windows / everyone else**: use Docker, Podman, Rancher Desktop, or any other
+  runtime that exposes a Docker-compatible socket. Point `DOCKER_HOST` at it, or leave it
+  unset if the default socket location works.
 
-Because these modules are intended for bridge-network test environments (no published ports), tests connect to containers using `container_bridge_ip(container.id())` rather than `get_host_port_ipv4`.
+```bash
+cargo test
+```
+
+Tests connect to containers using published ports and dynamic host ports rather than
+bridge-network IPs.
 
 ## License
 

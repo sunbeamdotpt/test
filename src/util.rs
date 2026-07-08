@@ -2,6 +2,7 @@ use std::io::Write;
 
 use bollard::{query_parameters::InspectContainerOptions, Docker};
 use flate2::{write::GzEncoder, Compression};
+use testcontainers::{core::ContainerPort, ContainerAsync, GenericImage};
 
 fn docker_socket() -> String {
     std::env::var("DOCKER_HOST")
@@ -110,4 +111,31 @@ pub async fn container_bridge_ip(
         .ip_address
         .clone()
         .ok_or_else(|| "container network has no IP address".into())
+}
+
+/// Return a URL for a container that publishes its ports to the Docker host.
+///
+/// Use this when the container was started with `.with_mapped_port(0, ...)`. The
+/// host part is whatever address the test process must use to reach the container
+/// (e.g. `localhost` with Docker Desktop, a VM IP with lima, etc.).
+pub async fn container_host_url(
+    container: &ContainerAsync<GenericImage>,
+    port: u16,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let host = container.get_host().await?.to_string();
+    let host_port = container.get_host_port_ipv4(ContainerPort::Tcp(port)).await?;
+    Ok(format!("http://{host}:{host_port}"))
+}
+
+/// Return a URL for a container using its bridge-network IP and original container port.
+///
+/// Use this when the container is reachable without published ports (the default for
+/// most `sunbeam-test` builders).
+#[allow(dead_code)]
+pub async fn container_bridge_url(
+    container: &ContainerAsync<GenericImage>,
+    port: u16,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let host = container_bridge_ip(container.id()).await?;
+    Ok(format!("http://{host}:{port}"))
 }

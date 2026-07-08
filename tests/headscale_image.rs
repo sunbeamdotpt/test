@@ -2,18 +2,19 @@ use std::time::Duration;
 
 #[tokio::test]
 async fn headscale_is_healthy() {
-    use sunbeam_test::{container_bridge_ip, Headscale};
+    use sunbeam_test::Headscale;
 
     let container = Headscale::default()
+        .publish_ports()
         .start()
         .await
         .expect("headscale should start");
 
-    let host = container_bridge_ip(container.id())
+    let base_url = Headscale::url(&container)
         .await
-        .expect("bridge ip should resolve");
+        .expect("headscale url should resolve");
 
-    let url = format!("http://{host}:{}/health", Headscale::HTTP_PORT);
+    let url = format!("{base_url}/health");
     let mut last_status = None;
     for _ in 0..30 {
         match reqwest::get(&url).await {

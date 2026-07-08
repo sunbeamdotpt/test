@@ -2,18 +2,19 @@ use std::time::Duration;
 
 #[tokio::test]
 async fn stalwart_is_healthy() {
-    use sunbeam_test::{container_bridge_ip, Stalwart};
+    use sunbeam_test::Stalwart;
 
     let container = Stalwart::default()
+        .publish_ports()
         .start()
         .await
         .expect("stalwart should start");
 
-    let host = container_bridge_ip(container.id())
+    let base_url = Stalwart::url(&container)
         .await
-        .expect("bridge ip should resolve");
+        .expect("stalwart url should resolve");
 
-    let url = format!("http://{host}:{}/login", Stalwart::PORT);
+    let url = format!("{base_url}/login");
     let mut last_status = None;
     for _ in 0..30 {
         match reqwest::get(&url).await {
