@@ -6,7 +6,6 @@ use testcontainers::{
     ContainerAsync, GenericImage, ImageExt,
 };
 
-
 /// Testcontainers builder for Ory Hydra.
 ///
 /// Defaults to the `oryd/hydra:v25.4.0` image used by `../sbbb`.
@@ -43,7 +42,9 @@ impl Hydra {
     }
 
     /// Start a container from the official Hydra image.
-    pub async fn start(self) -> Result<ContainerAsync<GenericImage>, testcontainers::TestcontainersError> {
+    pub async fn start(
+        self,
+    ) -> Result<ContainerAsync<GenericImage>, testcontainers::TestcontainersError> {
         GenericImage::new(Self::NAME, &self.tag)
             .with_exposed_port(ContainerPort::Tcp(Self::PUBLIC_PORT))
             .with_exposed_port(ContainerPort::Tcp(Self::ADMIN_PORT))

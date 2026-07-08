@@ -40,7 +40,9 @@ impl SearXng {
     }
 
     /// Start a SearXNG container.
-    pub async fn start(self) -> Result<ContainerAsync<GenericImage>, testcontainers::TestcontainersError> {
+    pub async fn start(
+        self,
+    ) -> Result<ContainerAsync<GenericImage>, testcontainers::TestcontainersError> {
         GenericImage::new(Self::NAME, &self.tag)
             .with_exposed_port(ContainerPort::Tcp(Self::PORT))
             .with_wait_for(WaitFor::message_on_either_std("Started worker-1"))

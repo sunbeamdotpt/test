@@ -1,9 +1,7 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use testcontainers::{
-    core::{ContainerPort},
-    runners::AsyncRunner,
-    ContainerAsync, GenericImage, ImageExt,
+    core::ContainerPort, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt,
 };
 
 use crate::util;
@@ -67,7 +65,9 @@ impl Tuwunel {
     }
 
     /// Build a small derived image containing the config and start a container from it.
-    pub async fn start(self) -> Result<ContainerAsync<GenericImage>, testcontainers::TestcontainersError> {
+    pub async fn start(
+        self,
+    ) -> Result<ContainerAsync<GenericImage>, testcontainers::TestcontainersError> {
         let image_name = "sunbeam-test/tuwunel";
         let descriptor = format!("{image_name}:{}", self.built_tag);
 
@@ -77,9 +77,15 @@ impl Tuwunel {
             self.tag
         );
 
-        util::build_image(&descriptor, &dockerfile, &[("tuwunel.toml", self.config.as_bytes())])
-            .await
-            .map_err(|e| testcontainers::TestcontainersError::other(format!("build tuwunel image: {e}")))?;
+        util::build_image(
+            &descriptor,
+            &dockerfile,
+            &[("tuwunel.toml", self.config.as_bytes())],
+        )
+        .await
+        .map_err(|e| {
+            testcontainers::TestcontainersError::other(format!("build tuwunel image: {e}"))
+        })?;
 
         GenericImage::new(image_name, &self.built_tag)
             .with_exposed_port(ContainerPort::Tcp(Self::PORT))

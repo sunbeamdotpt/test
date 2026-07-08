@@ -19,7 +19,8 @@ async fn opensearch_is_healthy() {
     for _ in 0..60 {
         match reqwest::get(&url).await {
             Ok(resp) if resp.status().is_success() => {
-                let body: serde_json::Value = resp.json().await.expect("health body should be json");
+                let body: serde_json::Value =
+                    resp.json().await.expect("health body should be json");
                 let status = body["status"].as_str().unwrap_or("unknown");
                 if status == "green" || status == "yellow" {
                     return;

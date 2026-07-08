@@ -1,9 +1,6 @@
 use std::io::Write;
 
-use bollard::{
-    query_parameters::InspectContainerOptions,
-    Docker,
-};
+use bollard::{query_parameters::InspectContainerOptions, Docker};
 use flate2::{write::GzEncoder, Compression};
 
 fn docker_socket() -> String {
@@ -103,9 +100,7 @@ pub async fn container_bridge_ip(
     let settings = inspect
         .network_settings
         .ok_or("container has no NetworkSettings")?;
-    let networks = settings
-        .networks
-        .ok_or("container has no Networks")?;
+    let networks = settings.networks.ok_or("container has no Networks")?;
     let network = networks
         .values()
         .next()

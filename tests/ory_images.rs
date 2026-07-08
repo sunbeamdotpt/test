@@ -26,10 +26,7 @@ async fn kratos_is_healthy() {
 async fn hydra_is_healthy() {
     use sunbeam_test::{container_bridge_ip, Hydra};
 
-    let container = Hydra::default()
-        .start()
-        .await
-        .expect("hydra should start");
+    let container = Hydra::default().start().await.expect("hydra should start");
 
     let host = container_bridge_ip(container.id())
         .await
@@ -50,10 +47,7 @@ async fn hydra_is_healthy() {
 async fn keto_is_healthy() {
     use sunbeam_test::{container_bridge_ip, Keto};
 
-    let container = Keto::default()
-        .start()
-        .await
-        .expect("keto should start");
+    let container = Keto::default().start().await.expect("keto should start");
 
     let host = container_bridge_ip(container.id())
         .await

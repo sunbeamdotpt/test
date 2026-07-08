@@ -44,7 +44,9 @@ impl OpenBao {
     }
 
     /// Start a container from the official OpenBao image in dev mode.
-    pub async fn start(self) -> Result<ContainerAsync<GenericImage>, testcontainers::TestcontainersError> {
+    pub async fn start(
+        self,
+    ) -> Result<ContainerAsync<GenericImage>, testcontainers::TestcontainersError> {
         let root_token_arg = format!("-dev-root-token-id={}", self.root_token);
         GenericImage::new(Self::NAME, &self.tag)
             .with_exposed_port(ContainerPort::Tcp(Self::PORT))

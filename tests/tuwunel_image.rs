@@ -18,7 +18,8 @@ async fn tuwunel_is_healthy() {
     for _ in 0..30 {
         match reqwest::get(&url).await {
             Ok(resp) if resp.status().is_success() => {
-                let body: serde_json::Value = resp.json().await.expect("versions body should be json");
+                let body: serde_json::Value =
+                    resp.json().await.expect("versions body should be json");
                 assert!(
                     body.get("versions").is_some(),
                     "tuwunel /_matrix/client/versions should contain versions"

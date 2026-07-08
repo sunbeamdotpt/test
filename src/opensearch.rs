@@ -1,9 +1,7 @@
 use std::time::Duration;
 
 use testcontainers::{
-    core::{ContainerPort},
-    runners::AsyncRunner,
-    ContainerAsync, GenericImage, ImageExt,
+    core::ContainerPort, runners::AsyncRunner, ContainerAsync, GenericImage, ImageExt,
 };
 
 /// Testcontainers builder for OpenSearch.
@@ -44,13 +42,18 @@ impl OpenSearch {
     }
 
     /// Start a single-node OpenSearch container with security disabled.
-    pub async fn start(self) -> Result<ContainerAsync<GenericImage>, testcontainers::TestcontainersError> {
+    pub async fn start(
+        self,
+    ) -> Result<ContainerAsync<GenericImage>, testcontainers::TestcontainersError> {
         GenericImage::new(Self::NAME, &self.tag)
             .with_exposed_port(ContainerPort::Tcp(Self::REST_PORT))
             .with_exposed_port(ContainerPort::Tcp(Self::TRANSPORT_PORT))
             .with_env_var("discovery.type", "single-node")
             .with_env_var("DISABLE_SECURITY_PLUGIN", "true")
-            .with_env_var("OPENSEARCH_INITIAL_ADMIN_PASSWORD", self.admin_password.clone())
+            .with_env_var(
+                "OPENSEARCH_INITIAL_ADMIN_PASSWORD",
+                self.admin_password.clone(),
+            )
             .with_env_var("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m")
             .with_env_var("bootstrap.memory_lock", "true")
             .with_network("default")
