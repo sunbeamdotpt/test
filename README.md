@@ -9,6 +9,7 @@ Custom [`testcontainers-rs`](https://github.com/testcontainers/testcontainers-rs
 | `Kratos` | `oryd/kratos` | Identity server, runs `serve public` |
 | `Hydra` | `oryd/hydra` | OAuth2/OIDC server, runs `serve public` |
 | `Keto` | `oryd/keto` | Permission server, runs `serve` |
+| `OpenFga` | `openfga/openfga` | ReBAC permission server, in-memory datastore |
 | `OpenBao` | `openbao/openbao` | Dev mode (auto-unsealed) with a known root token |
 | `OpenSearch` | `opensearchproject/opensearch` | Single-node cluster with security disabled |
 | `Stalwart` | `stalwartlabs/mail-server` | Bootstrap mode; admin password is read from container logs |

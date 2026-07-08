@@ -7,6 +7,7 @@
 //! * [`Kratos`](kratos::Kratos) – Ory identity & user management
 //! * [`Hydra`](hydra::Hydra) – Ory OAuth2 / OIDC provider
 //! * [`Keto`](keto::Keto) – Ory authorization / permission engine
+//! * [`OpenFga`](openfga::OpenFga) – OpenFGA authorization / permission engine
 //! * [`Postgres`](postgres::Postgres) – PostgreSQL metadata store
 //! * [`SsoGateway`](sso_gateway::SsoGateway) – full sso-gateway stack (pre-built image + deps)
 //! * [`OpenBao`](openbao::OpenBao) – secrets management
@@ -46,6 +47,7 @@ pub mod headscale;
 pub mod hydra;
 pub mod keto;
 pub mod kratos;
+pub mod openfga;
 pub mod openbao;
 pub mod opensearch;
 pub mod postgres;
@@ -60,6 +62,7 @@ pub use headscale::Headscale;
 pub use hydra::Hydra;
 pub use keto::Keto;
 pub use kratos::Kratos;
+pub use openfga::OpenFga;
 pub use openbao::OpenBao;
 pub use opensearch::OpenSearch;
 pub use postgres::Postgres;
