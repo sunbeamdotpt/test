@@ -18,7 +18,7 @@ Custom [`testcontainers-rs`](https://github.com/testcontainers/testcontainers-rs
 | `Headscale` | `headscale/headscale` | Derived image with a baked-in `config.yaml` |
 | `Tuwunel` | `ghcr.io/matrix-construct/tuwunel` | Derived image with a baked-in `tuwunel.toml` |
 | `Postgres` | `postgres` | `ory/ory/ory` credentials; optional published port |
-| `SsoGateway` | `ghcr.io/sunbeamdotpt/sso-gateway` | Full stack (Postgres + Hydra + Kratos + Keto + gateway image) on a private network; exposes a single endpoint |
+| `SsoGateway` | `ghcr.io/sunbeamdotpt/sso-gateway` | Full stack (Postgres + Hydra + Kratos + a permission backend + gateway image) on a private network; exposes a single endpoint. Permission backend is OpenFGA by default; switch with `with_permissions_backend` |
 
 ## Usage
 
@@ -61,6 +61,25 @@ let gateway = sunbeam_test::SsoGateway::new()
     .unwrap();
 
 let endpoint = gateway.endpoint(); // http://127.0.0.1:<random-port>
+```
+
+The permission backend defaults to OpenFGA, which matches the published gateway image
+(built with default Cargo features: `openfga`, not `keto`). Switch backends with
+`with_permissions_backend`:
+
+```rust
+use sunbeam_test::{PermissionBackend, SsoGateway};
+
+// OpenFGA (default) — works with the published `latest` image.
+let gateway = SsoGateway::new().start().await.unwrap();
+
+// Keto — requires a gateway image built with the `keto` Cargo feature.
+let gateway = SsoGateway::new()
+    .with_image("my-registry/sso-gateway", "keto")
+    .with_permissions_backend(PermissionBackend::Keto)
+    .start()
+    .await
+    .unwrap();
 ```
 
 ## Running the tests

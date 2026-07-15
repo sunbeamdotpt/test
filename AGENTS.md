@@ -44,7 +44,9 @@ let gateway = sunbeam_test::SsoGateway::new()
 let endpoint = gateway.endpoint();
 ```
 
-- It starts Postgres, Hydra, Kratos, and Keto on a private network, then starts the supplied pre-built sso-gateway image.
+- It starts Postgres, Hydra, Kratos, and the selected permission backend on a private network, then starts the supplied pre-built sso-gateway image.
+- The permission backend is selected with `with_permissions_backend(PermissionBackend::{OpenFga, Keto})` and defaults to `OpenFga`. Only the chosen backend's container is started; the orchestrator sets `PERMISSIONS_BACKEND` plus `OPENFGA_URL` (OpenFGA) or `KETO_*_URL` (Keto) accordingly.
+- The default published image is built with default Cargo features (`openfga`, not `keto`), so `PermissionBackend::Keto` requires an image built with the `keto` feature or the gateway refuses to start.
 - It exposes **only** `endpoint()` and `shutdown()`. Backing containers and their URLs are private.
 - It always uses dynamic host ports; there is no fixed-port option.
 - The default image is `ghcr.io/sunbeamdotpt/sso-gateway:latest`. Callers must ensure this image exists locally or is pullable.

@@ -8,18 +8,21 @@ use testcontainers::{
 };
 use tokio::time::{sleep, Instant};
 
-use crate::{Hydra, Keto, Kratos, Postgres};
+use crate::{Hydra, Keto, Kratos, OpenFga, Postgres};
 
 /// Kratos configuration tailored for sso-gateway tests.
 ///
-/// The identity schema includes the extra traits the gateway expects (`userName`, `name`,
-/// `active`, `tenant_id`) and the registration flow creates a session automatically.
+/// The gateway owns the identity trait model (changelog 2026.07.8), so Kratos persists
+/// only the minimal base identity — `{email}` plus credentials — under the base schema
+/// id `default` (matching the gateway's `KRATOS_DEFAULT_SCHEMA_ID`). This mirrors
+/// `../sso-gateway/deploy/kratos-identity.schema.json`. The registration flow creates a
+/// session automatically.
 const KRATOS_CONFIG: &str = r#"version: v0.13.0
 identity:
   default_schema_id: default
   schemas:
     - id: default
-      url: base64://eyIkaWQiOiJodHRwczovL3NjaGVtYXMub3J5LnNoL3ByZXNldHMva3JhdG9zL3F1aWNrc3RhcnQvZW1haWwtcGFzc3dvcmQvaWRlbnRpdHkuc2NoZW1hLmpzb24iLCIkc2NoZW1hIjoiaHR0cDovL2pzb24tc2NoZW1hLm9yZy9kcmFmdC0wNy9zY2hlbWEjIiwidGl0bGUiOiJQZXJzb24iLCJ0eXBlIjoib2JqZWN0IiwicHJvcGVydGllcyI6eyJ0cmFpdHMiOnsidHlwZSI6Im9iamVjdCIsInByb3BlcnRpZXMiOnsiZW1haWwiOnsidHlwZSI6InN0cmluZyIsImZvcm1hdCI6ImVtYWlsIiwidGl0bGUiOiJFLU1haWwiLCJvcnkuc2gva3JhdG9zIjp7ImNyZWRlbnRpYWxzIjp7InBhc3N3b3JkIjp7ImlkZW50aWZpZXIiOnRydWV9fSwicmVjb3ZlcnkiOnsidmlhIjoiZW1haWwifSwidmVyaWZpY2F0aW9uIjp7InZpYSI6ImVtYWlsIn19fSwidXNlck5hbWUiOnsidHlwZSI6InN0cmluZyJ9LCJuYW1lIjp7InR5cGUiOiJvYmplY3QifSwiYWN0aXZlIjp7InR5cGUiOiJib29sZWFuIn0sInRlbmFudF9pZCI6eyJ0eXBlIjoic3RyaW5nIn19LCJyZXF1aXJlZCI6WyJlbWFpbCJdLCJhZGRpdGlvbmFsUHJvcGVydGllcyI6ZmFsc2V9fX0=
+      url: base64://ewogICIkc2NoZW1hIjogImh0dHA6Ly9qc29uLXNjaGVtYS5vcmcvZHJhZnQtMDcvc2NoZW1hIyIsCiAgIiRpZCI6ICJodHRwczovL3NjaGVtYXMuc3VuYmVhbS5wdC9iYXNlLWlkZW50aXR5Lmpzb24iLAogICJ0aXRsZSI6ICJCYXNlIElkZW50aXR5IiwKICAidHlwZSI6ICJvYmplY3QiLAogICJhZGRpdGlvbmFsUHJvcGVydGllcyI6IGZhbHNlLAogICJwcm9wZXJ0aWVzIjogewogICAgInRyYWl0cyI6IHsKICAgICAgInR5cGUiOiAib2JqZWN0IiwKICAgICAgImFkZGl0aW9uYWxQcm9wZXJ0aWVzIjogZmFsc2UsCiAgICAgICJyZXF1aXJlZCI6IFsiZW1haWwiXSwKICAgICAgInByb3BlcnRpZXMiOiB7CiAgICAgICAgImVtYWlsIjogewogICAgICAgICAgInR5cGUiOiAic3RyaW5nIiwKICAgICAgICAgICJmb3JtYXQiOiAiZW1haWwiLAogICAgICAgICAgInRpdGxlIjogIkVtYWlsIiwKICAgICAgICAgICJtYXhMZW5ndGgiOiAzMjAsCiAgICAgICAgICAib3J5LnNoL2tyYXRvcyI6IHsKICAgICAgICAgICAgImNyZWRlbnRpYWxzIjogewogICAgICAgICAgICAgICJwYXNzd29yZCI6IHsgImlkZW50aWZpZXIiOiB0cnVlIH0sCiAgICAgICAgICAgICAgIndlYmF1dGhuIjogeyAiaWRlbnRpZmllciI6IHRydWUgfSwKICAgICAgICAgICAgICAidG90cCI6IHsgImFjY291bnRfbmFtZSI6IHRydWUgfSwKICAgICAgICAgICAgICAiY29kZSI6IHsgImlkZW50aWZpZXIiOiB0cnVlLCAidmlhIjogImVtYWlsIiB9LAogICAgICAgICAgICAgICJwYXNza2V5IjogeyAiZGlzcGxheV9uYW1lIjogdHJ1ZSB9CiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJyZWNvdmVyeSI6IHsgInZpYSI6ICJlbWFpbCIgfSwKICAgICAgICAgICAgInZlcmlmaWNhdGlvbiI6IHsgInZpYSI6ICJlbWFpbCIgfQogICAgICAgICAgfQogICAgICAgIH0KICAgICAgfQogICAgfQogIH0KfQo=
 serve:
   public:
     base_url: http://localhost:4433/
@@ -72,11 +75,34 @@ fn unique_prefix() -> String {
     format!("sso{nanos:x}")
 }
 
+/// Permission backend the sso-gateway should use.
+///
+/// Selects which container the orchestrator starts and which `PERMISSIONS_BACKEND`
+/// value the gateway is configured with. The default is [`OpenFga`](Self::OpenFga)
+/// because the published gateway image is built with default Cargo features, which
+/// include `openfga` but not `keto`.
+///
+/// Selecting [`Keto`](Self::Keto) requires a gateway image built with the `keto`
+/// Cargo feature; otherwise the gateway refuses to start with
+/// `PERMISSIONS_BACKEND=keto requires the keto feature`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PermissionBackend {
+    /// Ory Keto (relation-tuple) backend.
+    Keto,
+    /// OpenFGA (ReBAC) backend. Default; matches the published gateway image.
+    #[default]
+    OpenFga,
+}
+
 /// Testcontainers orchestrator for the full sso-gateway stack.
 ///
-/// Starts Postgres, Hydra, Kratos, and Keto on a private Docker network, then runs a
-/// pre-built sso-gateway container against them. The only thing exposed to callers is
-/// the gateway's public endpoint URL.
+/// Starts Postgres, Hydra, Kratos, and the selected permission backend (OpenFGA by
+/// default, or Keto) on a private Docker network, then runs a pre-built sso-gateway
+/// container against them. The only thing exposed to callers is the gateway's public
+/// endpoint URL.
+///
+/// Use [`with_permissions_backend`](Self::with_permissions_backend) to switch between
+/// the OpenFGA and Keto backends.
 #[derive(Debug, Clone)]
 pub struct SsoGateway {
     image_name: String,
@@ -85,6 +111,8 @@ pub struct SsoGateway {
     hydra_tag: String,
     kratos_tag: String,
     keto_tag: String,
+    openfga_tag: String,
+    permissions_backend: PermissionBackend,
     extra_env: HashMap<String, String>,
 }
 
@@ -125,9 +153,24 @@ impl SsoGateway {
         self
     }
 
-    /// Override the Keto image tag.
+    /// Override the Keto image tag. Only used when the Keto backend is selected.
     pub fn with_keto_tag(mut self, tag: impl Into<String>) -> Self {
         self.keto_tag = tag.into();
+        self
+    }
+
+    /// Override the OpenFGA image tag. Only used when the OpenFGA backend is selected.
+    pub fn with_openfga_tag(mut self, tag: impl Into<String>) -> Self {
+        self.openfga_tag = tag.into();
+        self
+    }
+
+    /// Select the permission backend the gateway uses (OpenFGA by default).
+    ///
+    /// Selecting [`PermissionBackend::Keto`] requires a gateway image built with the
+    /// `keto` Cargo feature.
+    pub fn with_permissions_backend(mut self, backend: PermissionBackend) -> Self {
+        self.permissions_backend = backend;
         self
     }
 
@@ -148,6 +191,7 @@ impl SsoGateway {
         let hydra_name = format!("{prefix}-hydra");
         let kratos_name = format!("{prefix}-kratos");
         let keto_name = format!("{prefix}-keto");
+        let openfga_name = format!("{prefix}-openfga");
         let gateway_name = format!("{prefix}-gateway");
 
         // Secrets are derived from the prefix so parallel stacks do not share them and
@@ -173,14 +217,6 @@ impl SsoGateway {
             .start()
             .await?;
 
-        let _keto = Keto::new()
-            .with_tag(&self.keto_tag)
-            .with_network(&network)
-            .with_container_name(&keto_name)
-            .with_config(KETO_CONFIG)
-            .start()
-            .await?;
-
         let hydra_issuer = format!("http://{hydra_name}:4444");
         let _hydra = Hydra::new()
             .with_tag(&self.hydra_tag)
@@ -189,6 +225,52 @@ impl SsoGateway {
             .with_urls_self_issuer(&hydra_issuer)
             .start()
             .await?;
+
+        // Start the selected permission backend and collect the env vars that point the
+        // gateway at it. Only the chosen backend's container is run.
+        let (permission_backend, backend_env) = match self.permissions_backend {
+            PermissionBackend::Keto => {
+                let keto = Keto::new()
+                    .with_tag(&self.keto_tag)
+                    .with_network(&network)
+                    .with_container_name(&keto_name)
+                    .with_config(KETO_CONFIG)
+                    .start()
+                    .await?;
+                let env = vec![
+                    ("PERMISSIONS_BACKEND".to_string(), "keto".to_string()),
+                    (
+                        "KETO_READ_URL".to_string(),
+                        format!("http://{keto_name}:{}", Keto::READ_PORT),
+                    ),
+                    (
+                        "KETO_WRITE_URL".to_string(),
+                        format!("http://{keto_name}:{}", Keto::WRITE_PORT),
+                    ),
+                    (
+                        "KETO_GRPC_URL".to_string(),
+                        format!("http://{keto_name}:4469"),
+                    ),
+                ];
+                (keto, env)
+            }
+            PermissionBackend::OpenFga => {
+                let openfga = OpenFga::new()
+                    .with_tag(&self.openfga_tag)
+                    .with_network(&network)
+                    .with_container_name(&openfga_name)
+                    .start()
+                    .await?;
+                let env = vec![
+                    ("PERMISSIONS_BACKEND".to_string(), "openfga".to_string()),
+                    (
+                        "OPENFGA_URL".to_string(),
+                        format!("http://{openfga_name}:{}", OpenFga::HTTP_PORT),
+                    ),
+                ];
+                (openfga, env)
+            }
+        };
 
         // Give the backing services a moment to finish opening their HTTP ports before
         // the gateway starts connecting to them.
@@ -210,9 +292,9 @@ impl SsoGateway {
             .with_env_var("HYDRA_PUBLIC_URL", format!("http://{hydra_name}:4444"))
             .with_env_var("KRATOS_ADMIN_URL", format!("http://{kratos_name}:4434"))
             .with_env_var("KRATOS_PUBLIC_URL", format!("http://{kratos_name}:4433"))
-            .with_env_var("KETO_READ_URL", format!("http://{keto_name}:4466"))
-            .with_env_var("KETO_WRITE_URL", format!("http://{keto_name}:4467"))
-            .with_env_var("KETO_GRPC_URL", format!("http://{keto_name}:4469"))
+            // Matches the base schema id baked into KRATOS_CONFIG; the gateway owns the
+            // trait model and only persists `{email}` to Kratos.
+            .with_env_var("KRATOS_DEFAULT_SCHEMA_ID", "default")
             .with_env_var("SYSTEM_TENANT_ULID", SYSTEM_TENANT_ULID)
             .with_env_var("SYSTEM_BOOTSTRAP_CLIENT_ID", "system-bootstrap-client")
             .with_env_var("SYSTEM_BOOTSTRAP_CLIENT_SECRET", &bootstrap_client_secret)
@@ -226,6 +308,9 @@ impl SsoGateway {
             .with_env_var("COOKIE_SAMESITE", "Lax")
             .with_startup_timeout(Duration::from_secs(180));
 
+        for (key, value) in &backend_env {
+            image = image.with_env_var(key, value);
+        }
         for (key, value) in &self.extra_env {
             image = image.with_env_var(key, value);
         }
@@ -252,7 +337,7 @@ impl SsoGateway {
             _postgres: postgres,
             _hydra,
             _kratos,
-            _keto,
+            _permission_backend: permission_backend,
             gateway,
         })
     }
@@ -267,6 +352,8 @@ impl Default for SsoGateway {
             hydra_tag: Hydra::DEFAULT_TAG.to_owned(),
             kratos_tag: Kratos::DEFAULT_TAG.to_owned(),
             keto_tag: Keto::DEFAULT_TAG.to_owned(),
+            openfga_tag: OpenFga::DEFAULT_TAG.to_owned(),
+            permissions_backend: PermissionBackend::default(),
             extra_env: HashMap::new(),
         }
     }
@@ -285,7 +372,7 @@ pub struct SsoGatewayHandle {
     #[allow(dead_code)]
     _kratos: ContainerAsync<GenericImage>,
     #[allow(dead_code)]
-    _keto: ContainerAsync<GenericImage>,
+    _permission_backend: ContainerAsync<GenericImage>,
     gateway: ContainerAsync<GenericImage>,
 }
 

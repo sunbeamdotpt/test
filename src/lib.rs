@@ -69,7 +69,7 @@ pub use opensearch::OpenSearch;
 pub use otelcol::OtelCollector;
 pub use postgres::Postgres;
 pub use searxng::SearXng;
-pub use sso_gateway::SsoGateway;
+pub use sso_gateway::{PermissionBackend, SsoGateway};
 pub use stalwart::Stalwart;
 pub use tuwunel::Tuwunel;
 pub use util::{container_bridge_ip, container_host_url};
