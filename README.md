@@ -12,6 +12,7 @@ Custom [`testcontainers-rs`](https://github.com/testcontainers/testcontainers-rs
 | `OpenFga` | `openfga/openfga` | ReBAC permission server, in-memory datastore |
 | `OpenBao` | `openbao/openbao` | Dev mode (auto-unsealed) with a known root token |
 | `OpenSearch` | `opensearchproject/opensearch` | Single-node cluster with security disabled |
+| `OtelCollector` | `otel/opentelemetry-collector` | Derived image with a baked-in config; OTLP/HTTP receiver + debug exporter logging received spans |
 | `Stalwart` | `stalwartlabs/mail-server` | Bootstrap mode; admin password is read from container logs |
 | `SearXNG` | `searxng/searxng` | Binds on `0.0.0.0:8080` so it is reachable from the bridge network |
 | `Headscale` | `headscale/headscale` | Derived image with a baked-in `config.yaml` |
