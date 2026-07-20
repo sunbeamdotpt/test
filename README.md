@@ -1,5 +1,13 @@
 # sunbeam-test
 
+> **Retired.** This crate has been absorbed into the Sunbeam SDK as
+> [`sdk::testing`](https://github.com/sunbeamdotpt/sdk/tree/mainline/src/testing)
+> (SDK ≥ v3.0.0, cargo feature `testing`). Migrate by replacing the
+> `sunbeam-test` dependency with
+> `sdk = { git = "https://github.com/sunbeamdotpt/sdk", default-features = false, features = ["testing"] }`
+> and `sunbeam_test::` imports with `sdk::testing::`. This repository is kept
+> for history only and will not receive updates.
+
 Custom [`testcontainers-rs`](https://github.com/testcontainers/testcontainers-rs) modules for the services that power [`../sbbb`](../sbbb). These builders handle the boilerplate of starting containerised dependencies for integration tests, with defaults matching the images and versions used by the Sunbeam deployment.
 
 ## Supported services
